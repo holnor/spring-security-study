@@ -94,26 +94,26 @@ Ahhoz, hogy megszüntethessük az `application.properties` fájlban rögzített 
 másik bejelentkezési módot. Konkrétabban egy `UserDetailsManager` interfészt kell implementálni.
 
 - Létezik egy `LdapUserDetailsManager` használata merülhet fel, de erre most nem térünk, mivel használata nem gyakori.
-- Az `InMemoryUserDetailsManager` alkalmazásával különböző felhasználókat álíthatunk be, különböző jogosultságokkal, de
-  mindegyik paraméter beégetett, a belépési adatok kiolvashatók a kódból, stb ezért **ezt a módot ne használjuk** éles
-  környezetben:
+  - Az `InMemoryUserDetailsManager` alkalmazásával különböző felhasználókat álíthatunk be, különböző jogosultságokkal, de
+    mindegyik paraméter beégetett, a belépési adatok kiolvashatók a kódból, stb ezért **ezt a módot ne használjuk** éles
+    környezetben:
 
-   ```java
-   @Bean
-public InMemoryUserDetailsManager userDetailsService(){
-        UserDetails admin=User.withDefaultPasswordEncoder()
-        .username("admin")
-        .password("12345")
-        .authorities("admin")
-        .build();
-        UserDetails user=User.withDefaultPasswordEncoder()
-        .username("user")
-        .password("12345")
-        .authorities("read")
-        .build();
-        return new InMemoryUserDetailsManager(admin,user);
-        }
-    ```
+      ```java
+         @Bean
+    public InMemoryUserDetailsManager userDetailsService(){
+            UserDetails admin=User.withDefaultPasswordEncoder()
+            .username("admin")
+            .password("12345")
+            .authorities("admin")
+            .build();
+            UserDetails user=User.withDefaultPasswordEncoder()
+            .username("user")
+            .password("12345")
+            .authorities("read")
+            .build();
+            return new InMemoryUserDetailsManager(admin,user);
+            }
+        ```
    
  - A `JdbcUserManager` már adatbázisból kezeli a felhasználókat, de mi tovább megyünk és JPA entitásokat hozunk létre a felhasználók kezelésére pedig egy saját `UserDetailsService` megvalósítást fogunk kidolgozni.(ha
   kipróbáltad az `InMemoryUserDetailsManager`-t, akkor azt most töröld!):
@@ -222,7 +222,48 @@ Mi a hash-elt jelsókezelést választjuk, mert az így kezelt jelszó nem fejth
       - Mivel implementálja a `UserDetailsService` osztályt, ezért hozzáférése lesz a Spring alapértelmezett autentikációt biztosító osztályához, a `DaoAuthenticationProvider`-hez
       - A providernek van egy metódusa, ami a bean-né tett encoder alapján össze tudja hasonlítani a jelszavakat.
 
-### 5.lépés - Egyedi AuthenticationProvider implementáció
+### 5. lépés - Egyedi AuthenticationProvider implementáció
 Azért lehet szükséges az egyéni implementáció, mert előfordulhat olyan helyzet, hogy a belépést egyéni logikához szeretnénk kötni, pl.:
     - Többféle bejelentkezési módot is meg szeretnénk valósítani (pl. oauth2)
     - Nem engedélyezett a belépés, csak bizonyos országokból.
+
+Az egyedi megvalósításhoz az alábbiakat kell tenni:
+
+1.  Hozz létre egy új osztályt, ami implementálja az `AuthenticationProvider` interfészt
+   - annotáld komponensként (`@Component`)
+   - Injektáld a `CustomerRepository`-t és a `PasswordEncoder`-t
+2. Valósítsd meg mindkét szükséges metódust:
+   - A `supports(Class<?> authentication)` metódust megkeresheted a `DaoAuthenticationProvider` osztályban, és egy az egye idemásolhatod.
+
+   ```java
+   @Override
+   public boolean supports(Class<?> authentication) {
+   return (UsernamePasswordAuthenticationToken.class.isAssignableFrom(authentication));
+   }
+      ```
+   - Az `authenticate(Authentication authentication)` metóduson belül tudod megírni a bejelentkeztetési logikát. Mi most az egyszerűség kedvéért nem kötünk ki további feltételeket, de figyeld meg, hogy a jelszavak összehasonlítását is explicit módon ki kell dolgozni!
+
+   ```java
+   @Override
+    public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+        String username = authentication.getName();
+        String pwd = authentication.getCredentials().toString();
+        Customer customer = customerRepository.findByEmail(username).orElse(null);
+        if (customer != null) {
+            if (passwordEncoder.matches(pwd, customer.getPwd())) {
+                List<GrantedAuthority> authorities = new ArrayList<>();
+                authorities.add(new SimpleGrantedAuthority(customer.getRole()));
+                return new UsernamePasswordAuthenticationToken(username, pwd, authorities);
+            } else {
+                throw new BadCredentialsException("Invalid password!");
+            }
+        }else {
+            throw new BadCredentialsException("No user registered with this details!");
+        }
+    }
+      ```
+   - További különbség, hogy Itt már nem egy `User`-rel, hanem egy `UsernamePasswordAuthenticationToken`-nel térünk vissza sikeres autentikáció esetén.
+     - a `UsernamePasswordAuthenticationToken` lehetőséget biztosít arra, hogy a hitelesítési adatokat átadják az autentikációs folyamathoz, míg a `User` osztály teljes felhasználói adatokat reprezentál, és általában az alkalmazás belső részéhez kapcsolódik.  
+3. Jelenleg két osztályunk gondoskodik a bejelentkeztetésről és a Spring dönt, hogy melyik lép érvénybe. Mi az egyéni megvalósításunkkal fogunk továbbhaladni, így a beépített megoldásra nincs szükségünk: töröld azt az osztályt! 
+
+### 6. lépés - CORS és CRSF
