@@ -267,3 +267,20 @@ Az egyedi megvalósításhoz az alábbiakat kell tenni:
 3. Jelenleg két osztályunk gondoskodik a bejelentkeztetésről és a Spring dönt, hogy melyik lép érvénybe. Mi az egyéni megvalósításunkkal fogunk továbbhaladni, így a beépített megoldásra nincs szükségünk: töröld azt az osztályt! 
 
 ### 6. lépés - CORS és CRSF
+Ahhoz hogy tovább tudjunk lépni, fel kell építeni az alaklmazás frontend részét. Ennek menetére nem térünk ki részletesen.
+- **Az új kódokat a "create new codebase for step#6" commit tartalmazza** 
+- Mivel ez nem egy MVC vagy Angular bemutató, ezért az ezekkel kapcsolatos lépésekre nem térünk ki.
+
+0. Dobd el az eddigi táblákat, futtasd a projektet, majd a project `resources` mappájában található `script.sql` futtatásával töltsd fel az adatbázist néhány adattal. Szánj rá kb fél órát, hogy megismerd az újonnan létrehozott osztályokat és az Angular projectet!
+1. Hozz létre Postman-nel egy új felhasználót!
+2. Indítsd el a frontendet (előtte `npm i`, ha még nem tetted!) és próbálj bejelntkezni a `localhost:4200/login` oldalon.
+   - Nyisd meg a böngészőben a konzolt és nézd meg milyen hibát kaptál.
+   - A böngésző alapbeállítása, hogy megvédje az adatot/kommunikációt és ne engedje annak megosztását két különböző domain között. (CORS)
+   - Figyelembe vett különbségek:
+     - különböző séma: HTTP vagy HTTPS
+     - különböző port: localhost:8080 vagy localhost:4200
+     - különböző domain: https://domain1.com vagy https://domain2.com
+     - A beállítás elvégezhető annotáció használatával is `@CrossOrigin(origins = "http://localhost:4200")`, de sok ismétlődést, és nehezen kezelhetőséget eredményezne, ezért mi nem így fogjuk elvégezni a beállítást
+3. A CORS globális beállításához nyisd meg a `SecurityConfig` osztályt
+
+
