@@ -426,7 +426,9 @@ Nézzük meg mi is történt a fenti kódban:
 - `CsrfTokenRequestAttributeHandler` : A CsrfTokenRequestHandler interfész implemetációja, amely képes a CsrfTokent
   kérés attribútumként elérhetővé tenni, és a token értékét a kérés fejléceként vagy paraméterértékeként feloldani.
 - A metódusláncon belül:
-    - `securityContext`: ez a konfiguráció azt mondja meg a Spring Security-nek, hogy az azonosításokat automatikusan mentse és mindig hozzon létre munkameneteket a felhasználók számára, amikor szükség van rájuk. Ennek a két sornak köszönhetően nem kell minden alkalommal megosztani a credentials-t az Angular alkalmazással   
+    - `securityContext`: ez a konfiguráció azt mondja meg a Spring Security-nek, hogy az azonosításokat automatikusan
+      mentse és mindig hozzon létre munkameneteket a felhasználók számára, amikor szükség van rájuk. Ennek a két sornak
+      köszönhetően nem kell minden alkalommal megosztani a credentials-t az Angular alkalmazással
     - meghatározzuk a tokenkezelő objektumot
     - beállítjuk, hogy mely végpontokat hagyja figyelmen kívül
     - `.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())`: a csrf tokent a böngésző küldi a szervernek
@@ -435,31 +437,38 @@ Nézzük meg mi is történt a fenti kódban:
     - `addFilterAfter`: közbeiktatja az egyedi szűrőnket, miután a basic autentikáció megtörtént.
 
 6. Frontenden is gondoskodni kell a csrf token kezeléséről:
-   - A `login.component.ts` fájlon belül egészítsd ki két sorral a `validateUser` funkciót, és importáld a szükséges függőséget:
-   
+    - A `login.component.ts` fájlon belül egészítsd ki két sorral a `validateUser` funkciót, és importáld a szükséges
+      függőséget:
+
    ```typescript
         let xsrf = getCookie('XSRF-TOKEN')!;
         window.sessionStorage.setItem("XSRF-TOKEN", xsrf);
    ```
-   - Spring Security "XSRF-TOKEN" névvel fogja küldeni a sütit, míg a böngészőtől "X-XSRF-TOKEN" néven várja. Következő lépésként ezért az interceptorban be kell állítani a headert ennek megfelelően. Ehhez egészítsd ki az `app.request.interceptor.ts` fájlt:
+    - Spring Security "XSRF-TOKEN" névvel fogja küldeni a sütit, míg a böngészőtől "X-XSRF-TOKEN" néven várja. Következő
+      lépésként ezért az interceptorban be kell állítani a headert ennek megfelelően. Ehhez egészítsd ki
+      az `app.request.interceptor.ts` fájlt:
    ```typescript
         let xsrf = sessionStorage.getItem('XSRF-TOKEN');
     if (xsrf){
       httpHeaders = httpHeaders.append('X-XSRF-TOKEN', xsrf);
     }
    ```
-   - Eztkövetően már minden egyes kérésnél visszaküldi a tokent a böngésző (kivéve: nem bejelntkezett felhasználó és le nem védett végpontok esetén)
-   - Ellenőrizd a sütiket a böngésző konzolán! Bejelntkezés után már nem csak a JSESSIONID, de az XSRF-TOKEN is ott kell legyen
-
+    - Eztkövetően már minden egyes kérésnél visszaküldi a tokent a böngésző (kivéve: nem bejelntkezett felhasználó és le
+      nem védett végpontok esetén)
+    - Ellenőrizd a sütiket a böngésző konzolán! Bejelntkezés után már nem csak a JSESSIONID, de az XSRF-TOKEN is ott
+      kell legyen
 
 ### 7. lépés - Autorizáció
-A sikeres autentikációt az autorizáció követi: Miután azonosítottuk magunkat, igazolnunk kell, hogy meg van a szükséges felhatalmazásunk az oldal használni kívánt funkciójához
-A projekt jelenlegi állapotában regisztráció során minden felhasználónak beállítjuk a `role` fieldjét automatikusan `"user"`-re, de fejlesztéseink révén szeretnénk majd elérni, hogy több szerepkört is ki lehessen osztani.
+
+A sikeres autentikációt az autorizáció követi: Miután azonosítottuk magunkat, igazolnunk kell, hogy meg van a szükséges
+felhatalmazásunk az oldal használni kívánt funkciójához
+A projekt jelenlegi állapotában regisztráció során minden felhasználónak beállítjuk a `role` fieldjét
+automatikusan `"user"`-re, de fejlesztéseink révén szeretnénk majd elérni, hogy több szerepkört is ki lehessen osztani.
 
 1. Hozz létre egy új entitást: Authority
-   - id: Long
-   - name: String
-   - customer: Customer (@ManyToOne @JoinColumn(name="customer_id"))
+    - id: Long
+    - name: String
+    - customer: Customer (@ManyToOne @JoinColumn(name="customer_id"))
 
 2. Add hozzá a Customer fieldjeihez az alábbit és készíts hozzá gettert/settert
    ```java
@@ -467,7 +476,9 @@ A projekt jelenlegi állapotában regisztráció során minden felhasználónak 
     @OneToMany(mappedBy = "customer", fetch = FetchType.EAGER)
     private Set<Authority> authorities;
    ```
-3. Hozz létre egy segédmetódust a `BankUsernamePasswordProvider` osztályban! Ez a metódus létrehoz egy `GrantedAuthorities` listát a bemeneti string lista alapján. Ez a metódus tulajdonképpen a 38-39.sor kiszervezése:
+3. Hozz létre egy segédmetódust a `BankUsernamePasswordProvider` osztályban! Ez a metódus létrehoz
+   egy `GrantedAuthorities` listát a bemeneti string lista alapján. Ez a metódus tulajdonképpen a 38-39.sor
+   kiszervezése:
    ```java
     private List<GrantedAuthority> getGrantedAuthorities(Set<Authority> authorities) {
         List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
@@ -477,8 +488,9 @@ A projekt jelenlegi állapotában regisztráció során minden felhasználónak 
         return grantedAuthorities;
     }
    ```
-4. Az `authenticate` metódusban a visszatérési érték `authorities` paraméterét cseréld ki a metódussal, majd töröld ki a sorokat, amiket kivált.
-   
+4. Az `authenticate` metódusban a visszatérési érték `authorities` paraméterét cseréld ki a metódussal, majd töröld ki a
+   sorokat, amiket kivált.
+
    ```java
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
@@ -511,11 +523,14 @@ A projekt jelenlegi állapotában regisztráció során minden felhasználónak 
    VALUES (1, 'VIEWBALANCE');
    ```
 
-6. Tegyél egy breakpointot az `authenticate` metódus második sorára, majd futtasd a programut debug módban és jelentkezz be! A customer fieldjei között meg kell jelenjen az authorities lista
+6. Tegyél egy breakpointot az `authenticate` metódus második sorára, majd futtasd a programut debug módban és jelentkezz
+   be! A customer fieldjei között meg kell jelenjen az authorities lista
    ![img.png](img.png)
 
-7. Ezt követően átállíthatjuk a szűrőnket, hogy bizonyos végpontok csak akkor legyenek hozzáférhetők, ha a felhasználó rendelkezik bizonyos jogosultságokkal.
-   Ha szeretnéd tesztelni, akkor megteheted, hogy kitörölsz egy jogosultságot az adatbázisból, és felkeresed az ahhoz tartozó végpontot. Az eredmény 403-as hbakód lesz
+7. Ezt követően átállíthatjuk a szűrőnket, hogy bizonyos végpontok csak akkor legyenek hozzáférhetők, ha a felhasználó
+   rendelkezik bizonyos jogosultságokkal.
+   Ha szeretnéd tesztelni, akkor megteheted, hogy kitörölsz egy jogosultságot az adatbázisból, és felkeresed az ahhoz
+   tartozó végpontot. Az eredmény 403-as hbakód lesz
    ```java
                 .authorizeHttpRequests((requests) -> requests
                         .requestMatchers("/myAccount").hasAuthority("VIEWACCOUNT")
@@ -526,8 +541,11 @@ A projekt jelenlegi állapotában regisztráció során minden felhasználónak 
                         .requestMatchers("/notices", "/contact", "/register").permitAll())
    ```
 
-Már egy közepes méretű alkalmazásnál is átláthatatlanná válhat a fenti megközelítés. Ennek áthidalása végett használhatsz a jogosultságok helyett szerepköröket (authority vs. role)
-A role-okkal csoportosíthatod a jogosultságokat. Alakítsuk át a jelenlegi autorizációt és használjunk helyette szerepköröket! Ezt gyorsan meg tudjuk valósítani, mivel ugyanazt az interfészt kell implementálni. Egy dologra kell fokozottan odafigyelni, hogy a Spring Security számára jelezni kell a különbséget role és autorizáció között.
+Már egy közepes méretű alkalmazásnál is átláthatatlanná válhat a fenti megközelítés. Ennek áthidalása végett
+használhatsz a jogosultságok helyett szerepköröket (authority vs. role)
+A role-okkal csoportosíthatod a jogosultságokat. Alakítsuk át a jelenlegi autorizációt és használjunk helyette
+szerepköröket! Ezt gyorsan meg tudjuk valósítani, mivel ugyanazt az interfészt kell implementálni. Egy dologra kell
+fokozottan odafigyelni, hogy a Spring Security számára jelezni kell a különbséget role és autorizáció között.
 Ha valamit role-ként definiálsz, akkor azt minden esetben **"ROLE_"** előtaggal kell ellátnod. Pl.: `ROLE_USER`
 
 1. Töröld ki a jelenlegi jogosultságokat az `authorities` táblából, és helyettük vegyél fel role-okat
@@ -541,7 +559,9 @@ Ha valamit role-ként definiálsz, akkor azt minden esetben **"ROLE_"** előtagg
    VALUES (1, 'ROLE_ADMIN');
    ```
 
-2. A szűrőben cseréld ki a `hasAuthority`, `hasAnyAuthority` metódusokat `hasRole` és `hasAnyRole` metódusokra, és paraméterként használd a szerepköröket. Figyelj rá, hogy a metódus string formában kéri a paramétert, és "ROLE_" előtagot nem kell megadnod!
+2. A szűrőben cseréld ki a `hasAuthority`, `hasAnyAuthority` metódusokat `hasRole` és `hasAnyRole` metódusokra, és
+   paraméterként használd a szerepköröket. Figyelj rá, hogy a metódus string formában kéri a paramétert, és "ROLE_"
+   előtagot nem kell megadnod!
 
    ```java
                 .authorizeHttpRequests((requests) -> requests
@@ -553,4 +573,105 @@ Ha valamit role-ként definiálsz, akkor azt minden esetben **"ROLE_"** előtagg
                         .requestMatchers("/notices","/contact","/register").permitAll())
 
    ```
-   
+
+### 8. lépés - Saját szűrő használata
+
+A korábbi lépések során már létrehoztunk egy egyéni szűrőt, hogy képesek legyünk csrf tokenek átadásra/fogadására. Ebben
+a lépésben kicsit részletesebben is bemutatjuk a kapcsolódó tudnivalókat.
+A filter tulajdonképpen az első réteg, amivel szembetalálkozik egy beérkező kérés. Habár ismerünk már néhány beépített
+szűrőt (pl.: BasicAuthenticationFilter),
+nem árt tudni, hogy a szűrők láncolatához saját szűrőt is hozzáadhatunk. Néhány példa, hogy miért lehet szükség erre:
+
+- Ip címek loggolása
+- adatok kódolás bejelentkezés előtt
+- többlépcsős azonosítás (OTP... nem a bank: One-Time Password)
+
+És még sorolhatnánk. Minden ezekhez hasonló esetben módosítani kell a szűrőláncot, és gyakran saját szűrőt kell
+közbeiktatni.
+Javaslom, hogy keresd meg a `FilterChainProxy` osztályt, és tanulmányozd a benne megírt metódusokat!
+Mélyrehatóan tudod tanulmányozni a működésüket, ha elvégzed az alábbi beállításokat, majd debugger módban indítod el az
+aplikációt:
+
+- az appot annotálod a következővel: `@EnableWebSecurity(debug=true)`
+- application.properties-ben: `logging.level.org.springframework.security.web.FilterChainProxy=DEBUG`
+
+**!!! Ezt a beállítást kizárólag fejlesztés közben használd! Éles környezetben ezekkel a beálításokkal érzékeny adatok
+kerülhetnek nyivánosságra.**
+És a továbbhaladáshoz sincs szükség rá, úgyhogy töröld a fenti beállításokat, ha már végeztél a tanulmányozással!
+
+1. Implementálnunk kell a `Filter` interfészt (jakarta.servlet).
+   A létrehozott osztályunkban így meg kell valósítani a `doFilter` metódust, ami három paramétert fogad:
+    - HttpServletRequest: kérés kezelésére
+    - HttpServletResponse: válasz kezelésére
+    - FilterChain: szűrőláncba építéshez
+
+2. Miután megírtuk a szűrő logikáját, beilleszthetjük a szűrőláncba. Ezt három lehetőség közül válasthatjuk meg hogyan
+   kivitelezzük:
+    - .addfilterBefore(new EgyéniSzűrőOsztályNeve(), SzűrőOsztályAmiElőttHasználjuk) - pl validálás
+    - .addfilterAfter(new EgyéniSzűrőOsztályNeve(), SzűrőOsztályAmiutánHasználjuk) - pl loggolás
+    - .addfilterAt(new EgyéniSzűrőOsztályNeve(), SzűrőOsztályAmivelEgyüttHasználjuk) - sorrend nem befolyásolható!
+
+Próbáljunk ki egyet a gyakorlatban!
+
+```java
+   import jakarta.servlet.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.io.IOException;
+import java.util.logging.Logger;
+
+public class AuthoritiesLoggingAfterFilter implements Filter {
+
+    private final Logger LOG =
+            Logger.getLogger(AuthoritiesLoggingAfterFilter.class.getName());
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (null != authentication) {
+            LOG.info("User " + authentication.getName() + " is successfully authenticated and "
+                    + "has the authorities " + authentication.getAuthorities().toString());
+        }
+        chain.doFilter(request, response);
+    }
+
+}
+   ```
+
+Miután ezt létrehoztad, illeszd be a szűrőláncba azáltal, hogy hozzáadod ezt a sort az `.authorizeHttpRequests` elé:
+
+   ```java
+       .addFilterAfter(new AuthoritiesLoggingAfterFilter(),BasicAuthenticationFilter.class)
+
+```
+
+Indítsd újra a programot, és jelentkezz be az oldalon, majd figyeld meg, hogy a kódszerkesztő konzolán megjelent a
+kívánt log.
+
+##### GenericFilterBean és OncePerRequestFilter
+
+Úgy is megoldható az egyéni szűrő létrehozása, ha a fenti két interfész valamelyikét implementáljuk
+
+##### GenericFilterBean:
+
+- Az AbstractAuthenticationProcessingFilter ősosztálya.
+- Általános célú szűrőként használható, amelyek nem feltétlenül kapcsolódnak az azonosítás és az engedélyezés folyamatához.
+- Nem biztosítja az automatikus egyszerre futás ellenőrzést, tehát nem garantálja, hogy a szűrő csak egyszer fut le
+  minden kérés esetén.
+-Használatra példa: ha egy általános célú szűrőt kívánsz létrehozni, amely nem szorosan kapcsolódik az
+azonosításhoz vagy engedélyezéshez, és nincs szükség rá, hogy minden kérés esetén csak egyszer fusson le.
+
+##### OncePerRequestFilter:
+
+- Garantálja, hogy a szűrőt minden HTTP kérés esetén csak egyszer hajtja végre, és nem ismétli meg a feldolgozást, ha a
+kérés további szűrőket vagy kezelőkét érint.
+- Gyakran használják olyan szűrőknél, amelyek közvetlenül kapcsolódnak az azonosítás és az engedélyezés folyamatához,
+például az autentikációs vagy jogosultság-ellenőrző szűrőknél.
+- Használatra példa: Ha egy szűrőt kívánsz készíteni, amely közvetlenül kapcsolódik az azonosításhoz vagy
+engedélyezéshez, és biztosítani akarod, hogy a szűrőd csak egyszer fusson le minden kérés esetén, még akkor is, ha több
+további szűrőt vagy kezelőt alkalmaznak a kérés során.
+
+
