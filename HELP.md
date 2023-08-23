@@ -450,3 +450,107 @@ Nézzük meg mi is történt a fenti kódban:
    ```
    - Eztkövetően már minden egyes kérésnél visszaküldi a tokent a böngésző (kivéve: nem bejelntkezett felhasználó és le nem védett végpontok esetén)
    - Ellenőrizd a sütiket a böngésző konzolán! Bejelntkezés után már nem csak a JSESSIONID, de az XSRF-TOKEN is ott kell legyen
+
+
+### 7. lépés - Autorizáció
+A sikeres autentikációt az autorizáció követi: Miután azonosítottuk magunkat, igazolnunk kell, hogy meg van a szükséges felhatalmazásunk az oldal használni kívánt funkciójához
+A projekt jelenlegi állapotában regisztráció során minden felhasználónak beállítjuk a `role` fieldjét automatikusan `"user"`-re, de fejlesztéseink révén szeretnénk majd elérni, hogy több szerepkört is ki lehessen osztani.
+
+1. Hozz létre egy új entitást: Authority
+   - id: Long
+   - name: String
+   - customer: Customer (@ManyToOne @JoinColumn(name="customer_id"))
+
+2. Add hozzá a Customer fieldjeihez az alábbit és készíts hozzá gettert/settert
+   ```java
+    @JsonIgnore
+    @OneToMany(mappedBy = "customer", fetch = FetchType.EAGER)
+    private Set<Authority> authorities;
+   ```
+3. Hozz létre egy segédmetódust a `BankUsernamePasswordProvider` osztályban! Ez a metódus létrehoz egy `GrantedAuthorities` listát a bemeneti string lista alapján. Ez a metódus tulajdonképpen a 38-39.sor kiszervezése:
+   ```java
+    private List<GrantedAuthority> getGrantedAuthorities(Set<Authority> authorities) {
+        List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
+        for (Authority authority : authorities) {
+            grantedAuthorities.add(new SimpleGrantedAuthority(authority.getName()));
+        }
+        return grantedAuthorities;
+    }
+   ```
+4. Az `authenticate` metódusban a visszatérési érték `authorities` paraméterét cseréld ki a metódussal, majd töröld ki a sorokat, amiket kivált.
+   
+   ```java
+    @Override
+    public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+        String username = authentication.getName();
+        String pwd = authentication.getCredentials().toString();
+        Customer customer = customerRepository.findByEmail(username).orElse(null);
+        if (customer != null) {
+            if (passwordEncoder.matches(pwd, customer.getPwd())) {
+                return new UsernamePasswordAuthenticationToken(username, pwd, getGrantedAuthorities(customer.getAuthorities()));
+            } else {
+                throw new BadCredentialsException("Invalid password!");
+            }
+        }else {
+            throw new BadCredentialsException("No user registered with this details!");
+        }
+    }
+   ```
+5. Töltsd fel adattal az autorities táblát
+   ```sql
+   INSERT INTO `authorities` (`customer_id`, `name`)
+   VALUES (1, 'VIEWACCOUNT');
+   
+   INSERT INTO `authorities` (`customer_id`, `name`)
+   VALUES (1, 'VIEWCARDS');
+   
+   INSERT INTO `authorities` (`customer_id`, `name`)
+   VALUES (1, 'VIEWLOANS');
+   
+   INSERT INTO `authorities` (`customer_id`, `name`)
+   VALUES (1, 'VIEWBALANCE');
+   ```
+
+6. Tegyél egy breakpointot az `authenticate` metódus második sorára, majd futtasd a programut debug módban és jelentkezz be! A customer fieldjei között meg kell jelenjen az authorities lista
+   ![img.png](img.png)
+
+7. Ezt követően átállíthatjuk a szűrőnket, hogy bizonyos végpontok csak akkor legyenek hozzáférhetők, ha a felhasználó rendelkezik bizonyos jogosultságokkal.
+   Ha szeretnéd tesztelni, akkor megteheted, hogy kitörölsz egy jogosultságot az adatbázisból, és felkeresed az ahhoz tartozó végpontot. Az eredmény 403-as hbakód lesz
+   ```java
+                .authorizeHttpRequests((requests) -> requests
+                        .requestMatchers("/myAccount").hasAuthority("VIEWACCOUNT")
+                        .requestMatchers("/myBalance").hasAnyAuthority("VIEWACCOUNT", "VIEWBALANCE")
+                        .requestMatchers("/myLoans").hasAuthority("VIEWLOANS")
+                        .requestMatchers("/myCards").hasAuthority("VIEWCARDS")
+                        .requestMatchers("/user").authenticated()
+                        .requestMatchers("/notices", "/contact", "/register").permitAll())
+   ```
+
+Már egy közepes méretű alkalmazásnál is átláthatatlanná válhat a fenti megközelítés. Ennek áthidalása végett használhatsz a jogosultságok helyett szerepköröket (authority vs. role)
+A role-okkal csoportosíthatod a jogosultságokat. Alakítsuk át a jelenlegi autorizációt és használjunk helyette szerepköröket! Ezt gyorsan meg tudjuk valósítani, mivel ugyanazt az interfészt kell implementálni. Egy dologra kell fokozottan odafigyelni, hogy a Spring Security számára jelezni kell a különbséget role és autorizáció között.
+Ha valamit role-ként definiálsz, akkor azt minden esetben **"ROLE_"** előtaggal kell ellátnod. Pl.: `ROLE_USER`
+
+1. Töröld ki a jelenlegi jogosultságokat az `authorities` táblából, és helyettük vegyél fel role-okat
+   ```sql
+   DELETE FROM `authorities`;
+   
+   INSERT INTO `authorities` (`customer_id`, `name`)
+   VALUES (1, 'ROLE_USER');
+   
+   INSERT INTO `authorities` (`customer_id`, `name`)
+   VALUES (1, 'ROLE_ADMIN');
+   ```
+
+2. A szűrőben cseréld ki a `hasAuthority`, `hasAnyAuthority` metódusokat `hasRole` és `hasAnyRole` metódusokra, és paraméterként használd a szerepköröket. Figyelj rá, hogy a metódus string formában kéri a paramétert, és "ROLE_" előtagot nem kell megadnod!
+
+   ```java
+                .authorizeHttpRequests((requests) -> requests
+                        .requestMatchers("/myAccount").hasRole("USER")
+                        .requestMatchers("/myBalance").hasAnyRole("USER","ADMIN")
+                        .requestMatchers("/myLoans").hasRole("USER")
+                        .requestMatchers("/myCards").hasRole("USER")
+                        .requestMatchers("/user").authenticated()
+                        .requestMatchers("/notices","/contact","/register").permitAll())
+
+   ```
+   
