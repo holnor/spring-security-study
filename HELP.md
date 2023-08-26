@@ -963,4 +963,5 @@ Amiket elértünk ezzel a lépéssel:
     - nem sütiben tároljuk a bejelntkezési adatokat
     - a felhasználó jelszavát egyetlen egyszer utaztatjuk (bejelntkezés)
     - tovább fokozzuk a biztonságot azzal, hogy nem tároljuk a tokent, hanem az aláírás segítségével győződünk meg a hitelességéről
-    - növeltük az oldal sebességét azáltal, hogy autentikációról és autorizációról a biztonsági szűrőlánc gondoskodik. 
+    - növeltük az oldal sebességét azáltal, hogy autentikációról és autorizációról a biztonsági szűrőlánc gondoskodik.
+    - ha a token korrumpálódott, a felhasználónak nem kell jelszót változtatni, csupán újra bejelentkeznie.
