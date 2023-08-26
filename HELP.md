@@ -658,43 +658,55 @@ kívánt log.
 ##### GenericFilterBean:
 
 - Az AbstractAuthenticationProcessingFilter ősosztálya.
-- Általános célú szűrőként használható, amelyek nem feltétlenül kapcsolódnak az azonosítás és az engedélyezés folyamatához.
+- Általános célú szűrőként használható, amelyek nem feltétlenül kapcsolódnak az azonosítás és az engedélyezés
+  folyamatához.
 - Nem biztosítja az automatikus egyszerre futás ellenőrzést, tehát nem garantálja, hogy a szűrő csak egyszer fut le
   minden kérés esetén.
--Használatra példa: ha egy általános célú szűrőt kívánsz létrehozni, amely nem szorosan kapcsolódik az
-azonosításhoz vagy engedélyezéshez, és nincs szükség rá, hogy minden kérés esetén csak egyszer fusson le.
+  -Használatra példa: ha egy általános célú szűrőt kívánsz létrehozni, amely nem szorosan kapcsolódik az
+  azonosításhoz vagy engedélyezéshez, és nincs szükség rá, hogy minden kérés esetén csak egyszer fusson le.
 
 ##### OncePerRequestFilter:
 
 - Garantálja, hogy a szűrőt minden HTTP kérés esetén csak egyszer hajtja végre, és nem ismétli meg a feldolgozást, ha a
-kérés további szűrőket vagy kezelőkét érint.
+  kérés további szűrőket vagy kezelőkét érint.
 - Gyakran használják olyan szűrőknél, amelyek közvetlenül kapcsolódnak az azonosítás és az engedélyezés folyamatához,
-például az autentikációs vagy jogosultság-ellenőrző szűrőknél.
+  például az autentikációs vagy jogosultság-ellenőrző szűrőknél.
 - Használatra példa: Ha egy szűrőt kívánsz készíteni, amely közvetlenül kapcsolódik az azonosításhoz vagy
-engedélyezéshez, és biztosítani akarod, hogy a szűrőd csak egyszer fusson le minden kérés esetén, még akkor is, ha több
-további szűrőt vagy kezelőt alkalmaznak a kérés során.
-
+  engedélyezéshez, és biztosítani akarod, hogy a szűrőd csak egyszer fusson le minden kérés esetén, még akkor is, ha
+  több
+  további szűrőt vagy kezelőt alkalmaznak a kérés során.
 
 ### 9. lépés - Token alapú autentikáció (JWT)
-Az előző lépés végére felépítettünk egy olyan biztonsági rendszert, mely alkalamas lehet egy kisebb projekt, vagy egy csupán tűzfalon belül működő alkalmazás levédésére.
-Viszont ha enterprise méretű, vagy a teljes interneten hozzáférhető alkalmazásunk van, akkor nem lesz elegendő számunkra a JSESSIONID.
-Egy olyan tokent kell legyártanunk, amely képes több információt is tárolni a felhasználóról, és amit titkosítással tudunk védeni.
-Erre szolgál megoldásként a JWT alapú bejelentkeztetés. Leginkább ahhoz hasonlítható a módszer, mint amikor vendégként első alkalommal megjelensz
-egy szálloda recepciójánál. Bemutatod a személyidet, a foglalási azonosítódat, stb. majd kapsz a recepcióstól egy kulcskártyát, amivel eztán az egész hotel területén mozoghatsz.
-Bejuthatsz az étterembe, a bárba, vagy ha a csomagod tartalmazza, akkor a wellness részlegre és az edzőtermekhez. Ha elvesztenéd a kulcsot, akkor odasétálsz a recepcióshoz, újra azonosítod magad, a recepciós pedig érvényteleníti az elveszett kártyát, ami helyett kiállít egy másikat.
+
+Az előző lépés végére felépítettünk egy olyan biztonsági rendszert, mely alkalamas lehet egy kisebb projekt, vagy egy
+csupán tűzfalon belül működő alkalmazás levédésére.
+Viszont ha enterprise méretű, vagy a teljes interneten hozzáférhető alkalmazásunk van, akkor nem lesz elegendő számunkra
+a JSESSIONID.
+Egy olyan tokent kell legyártanunk, amely képes több információt is tárolni a felhasználóról, és amit titkosítással
+tudunk védeni.
+Erre szolgál megoldásként a JWT alapú bejelentkeztetés. Leginkább ahhoz hasonlítható a módszer, mint amikor vendégként
+első alkalommal megjelensz
+egy szálloda recepciójánál. Bemutatod a személyidet, a foglalási azonosítódat, stb. majd kapsz a recepcióstól egy
+kulcskártyát, amivel eztán az egész hotel területén mozoghatsz.
+Bejuthatsz az étterembe, a bárba, vagy ha a csomagod tartalmazza, akkor a wellness részlegre és az edzőtermekhez. Ha
+elvesztenéd a kulcsot, akkor odasétálsz a recepcióshoz, újra azonosítod magad, a recepciós pedig érvényteleníti az
+elveszett kártyát, ami helyett kiállít egy másikat.
 A mostani lépésben ezt fogjuk megvalósíteni.
 
-
 A JWT token három részből áll, amiből a harmadik opcionális:
-   - header: metaadatok
-   - playload: felhasználóról információ
-   - aláírás: hitelesítésben játszik szerepet
 
+- header: metaadatok
+- playload: felhasználóról információ
+- aláírás: hitelesítésben játszik szerepet
 
-A token első két tagja csupán Base64 alapú kódolással védett, ám ez könnyedén visszafejthető és így a tartalom szerkeszthető.
-Éppen ezért mi felhasználjuk az aláírás adta lehetőséget a még biztonságosabb bejelentkeztetéshez. Az aláírás ugyanis nem kódolt, hanem titkosított.
-Mi egy hash-elési technikával fogjuk ezt elérni, azaz nem lesz mód az aláírás visszafejtésére, ám a backendünk tudni fogja, hogy hiteles-e az aláírás.
-Az aláírás alapja a header és a playload, ami ha illetéktelen kezébe kerülne, aki módosítani akarja a tartalmát, azt ugyan megteheti, ám az aláírás miatt
+A token első két tagja csupán Base64 alapú kódolással védett, ám ez könnyedén visszafejthető és így a tartalom
+szerkeszthető.
+Éppen ezért mi felhasználjuk az aláírás adta lehetőséget a még biztonságosabb bejelentkeztetéshez. Az aláírás ugyanis
+nem kódolt, hanem titkosított.
+Mi egy hash-elési technikával fogjuk ezt elérni, azaz nem lesz mód az aláírás visszafejtésére, ám a backendünk tudni
+fogja, hogy hiteles-e az aláírás.
+Az aláírás alapja a header és a playload, ami ha illetéktelen kezébe kerülne, aki módosítani akarja a tartalmát, azt
+ugyan megteheti, ám az aláírás miatt
 nem fog átjutni a bejelentkezésen, mivel a módosított tartalom miatt a hash nem fog egyezni.
 
 1. Függőségek importálása:
@@ -717,21 +729,26 @@ nem fog átjutni a bejelentkezésen, mivel a módosított tartalom miatt a hash 
 			<scope>runtime</scope>
 		</dependency>
    ```
-   
+
 2. Többé nem akarjuk, hogy JSESSIONID-t generáljon a keretrendszer, ezért módosítanunk kell a `SecurityConfig`-on:
-   - a szűrőlánc első beállítását (`.securityContext(...)`) cseréljük le erre:
+    - a szűrőlánc első beállítását (`.securityContext(...)`) cseréljük le erre:
    ```java
    .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
    ```
    Ezt követően már nekünk kell gondoskodni a session felépítéséről.
-3. A CORS beállításot ki kell egészíteni egy sorral, mivel a generált tokent el kell juttasuk a frontendre, amit a response headerben "authorization" néven fogunk megtenni.
-   Mivel ezzel a lépéssel felfedjük a headert a böngésző előtt, így explicit módon tudatni kell vele, hogy headert küldünk, különben nem fogja elfogadni azt. Ennek beállítása viszont igencsak egyszerű:
-   - A `config.setAllowHeaders(...)` beállítást követő sorba illeszük be ezt: `config.setExposedHeaders(Arrays.asList("Authorization"));`
-   - _megj.: CSRF token esetében azért nem volt szükség erre a lépésre, mert az a keretrendszer által generált token, amit a böngésző külön beállítás nélkül is képes fogadni- Minden egyéni header esetében ez a lépés szükésges._
+3. A CORS beállításot ki kell egészíteni egy sorral, mivel a generált tokent el kell juttasuk a frontendre, amit a
+   response headerben "authorization" néven fogunk megtenni.
+   Mivel ezzel a lépéssel felfedjük a headert a böngésző előtt, így explicit módon tudatni kell vele, hogy headert
+   küldünk, különben nem fogja elfogadni azt. Ennek beállítása viszont igencsak egyszerű:
+    - A `config.setAllowHeaders(...)` beállítást követő sorba illeszük be
+      ezt: `config.setExposedHeaders(Arrays.asList("Authorization"));`
+    - _megj.: CSRF token esetében azért nem volt szükség erre a lépésre, mert az a keretrendszer által generált token,
+      amit a böngésző külön beállítás nélkül is képes fogadni- Minden egyéni header esetében ez a lépés szükésges._
 
 4. Hozz létre egy szűrőt (`JWTTokenGeneratorFilter`), ami implementálja a `OncePerRequestFilter` interfészt!
 5. Hozz létre egy új interfészt, amiben konstansként tárolod a headert és a jwt kulcsot!
-   - Éles környezetben a kulcsot biztonságosan tároljuk és nem a kódban. Ideális esetben a DevOps csapat gondoskodik róla, hogy CI/CD eszközökkel környezeti változóként injektálják az alkalmazásba a kitelepíts során.
+    - Éles környezetben a kulcsot biztonságosan tároljuk és nem a kódban. Ideális esetben a DevOps csapat gondoskodik
+      róla, hogy CI/CD eszközökkel környezeti változóként injektálják az alkalmazásba a kitelepíts során.
    ```java
    public interface SecurityConstants {
    
@@ -741,15 +758,17 @@ nem fog átjutni a bejelentkezésen, mivel a módosított tartalom miatt a hash 
    }
    ```
 6. A `JWTTokenGeneratorFilter` osztály `doFilterInternal()` metódusán belül
-   - Kérd ki a `SecurityContextHolder`-től az `Authentication` objektumot!
-   - Ha az nem null, akkor:
-     - hozz létre egy `SecretKey` típusú kulcsot,
-     - hozz létre egy String típusú jwt tokent a `Jwts` builderével.
-       - Ne felejtsd el aláírni a tokent a létrehozott kulccsal!
-         Amikor a `claim()` részt állítod be, akkor tulajdonképpen a token payload-ját hozod létre. Ide bármit betehetsz, de **ne feledkezz meg róla, hogy a tokennek ez a része csupán kódolt, nem titkosított, így ezt bárki könnyedén visszafejtheti!**
-     - állítsd be a válasz header-ét
+    - Kérd ki a `SecurityContextHolder`-től az `Authentication` objektumot!
+    - Ha az nem null, akkor:
+        - hozz létre egy `SecretKey` típusú kulcsot,
+        - hozz létre egy String típusú jwt tokent a `Jwts` builderével.
+            - Ne felejtsd el aláírni a tokent a létrehozott kulccsal!
+              Amikor a `claim()` részt állítod be, akkor tulajdonképpen a token payload-ját hozod létre. Ide bármit
+              betehetsz, de **ne feledkezz meg róla, hogy a tokennek ez a része csupán kódolt, nem titkosított, így ezt
+              bárki könnyedén visszafejtheti!**
+        - állítsd be a válasz header-ét
 
-   - Alkoss láncot, amit majd beépíthetünk a `SecurityFilterChain`-be
+    - Alkoss láncot, amit majd beépíthetünk a `SecurityFilterChain`-be
    ```java
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -769,8 +788,9 @@ nem fog átjutni a bejelentkezésen, mivel a módosított tartalom miatt a hash 
         filterChain.doFilter(request, response);
     }
    ```
-   
-   A `populateAuthorities()` metódus gondoskodik arról, hogy kiolvassa a felhasználó jogosultságait és beírja a token payload mezőjébe
+
+   A `populateAuthorities()` metódus gondoskodik arról, hogy kiolvassa a felhasználó jogosultságait és beírja a token
+   payload mezőjébe
 
    ```java
     private String populateAuthorities(Collection<? extends GrantedAuthority> collection) {
@@ -781,10 +801,13 @@ nem fog átjutni a bejelentkezésen, mivel a módosított tartalom miatt a hash 
         return String.join(",", authoritiesSet);
     }
    ```
-   
-7. Ezt a filtert kizárólag akkor szeretnénk alkalmazni, amikor a felhasználó bejelentkezik. Máskülönben minden egyes kérésnél újra és újra lezajlana a token generálásának folyamata.
-   Ahhoz hogy ezt elérjük, szükségünk lesz egy másik felülírt metódusra, a `shouldNotFilter()`-re, aminek keretein belül meghatározhatjuk, hogy mely kérések esetén ne fusson le ez a szűrő.
-   Itt ahelyett, hogy felsorolnánk a végpontjaink sokaságát, egy dupla tagadással érjük el a kívánt eredményt: Ha a kérés nem a `/user` végpontról érkezik, akkor ne fusson le a szűrő
+
+7. Ezt a filtert kizárólag akkor szeretnénk alkalmazni, amikor a felhasználó bejelentkezik. Máskülönben minden egyes
+   kérésnél újra és újra lezajlana a token generálásának folyamata.
+   Ahhoz hogy ezt elérjük, szükségünk lesz egy másik felülírt metódusra, a `shouldNotFilter()`-re, aminek keretein belül
+   meghatározhatjuk, hogy mely kérések esetén ne fusson le ez a szűrő.
+   Itt ahelyett, hogy felsorolnánk a végpontjaink sokaságát, egy dupla tagadással érjük el a kívánt eredményt: Ha a
+   kérés nem a `/user` végpontról érkezik, akkor ne fusson le a szűrő
 
    ```java
     @Override
@@ -792,5 +815,152 @@ nem fog átjutni a bejelentkezésen, mivel a módosított tartalom miatt a hash 
         return !request.getServletPath().equals("/user");
     }
    ```
-   
-8. Miután elkészítettük az egyedi szűrőnket, gondoskodjunk róla, hogy bekerüljön a szűrőláncba! Ezt a szűrőt akkor szeretnénkhasználni, ha a felhasználó sikeresen bejelntkezett, tehát a megfelelő metódus az `.addFilterAfter(new JWTTokenGeneratorFilter(), BasicAuthenticationFilter.class))`
+
+8. Miután elkészítettük az egyedi szűrőnket, gondoskodjunk róla, hogy bekerüljön a szűrőláncba! Ezt a szűrőt akkor
+   szeretnénk alkalmazni, ha a felhasználó sikeresen bejelntkezett, tehát a megfelelő metódus
+   az `.addFilterAfter(new JWTTokenGeneratorFilter(), BasicAuthenticationFilter.class))`
+
+```java
+import javax.crypto.SecretKey;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+
+public class JWTTokenGeneratorFilter extends OncePerRequestFilter {
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (null != authentication) {
+            SecretKey key = Keys.hmacShaKeyFor(SecurityConstants.JWT_KEY.getBytes(StandardCharsets.UTF_8));
+            String jwt = Jwts.builder().setIssuer("Eazy Bank").setSubject("JWT Token")
+                    .claim("username", authentication.getName())
+                    .claim("authorities", populateAuthorities(authentication.getAuthorities()))
+                    .setIssuedAt(new Date())
+                    .setExpiration(new Date((new Date()).getTime() + 30000000))
+                    .signWith(key).compact();
+            response.setHeader(SecurityConstants.JWT_HEADER, jwt);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return !request.getServletPath().equals("/user");
+    }
+
+    private String populateAuthorities(Collection<? extends GrantedAuthority> collection) {
+        Set<String> authoritiesSet = new HashSet<>();
+        for (GrantedAuthority authority : collection) {
+            authoritiesSet.add(authority.getAuthority());
+        }
+        return String.join(",", authoritiesSet);
+    }
+
+}
+
+   ```
+
+9. Hozz létre egy újabb egyéni szűrőt a token validálásához!
+    - A `doFilterInternal()` metódussal kinyerjük a tokent a header-ből.
+    - Ha az értéke nem null, akkor `try` ágon:
+        - létrehozunk a generálással megegyező módon egy `SecretKey`-t
+        - felépítjük a `Claims`-t a `JwtsParserBuilder()` metóduslánccal, aminek a `.parseClaimsJws(jwt)` része
+          automatikusan vizsgálja a token hitelességét, **ha a láncban a kulcs is jelen van**. Probléma esetén valmilyen
+          exceptiont dob:
+            - ExpiredJwtException,
+            - UnsupportedJwtException,
+            - MalformedJwtException, SignatureException,
+            - IllegalArgumentException
+        - A claimsből kinyerjük a felhasználónevet és a jogosultságokat, ami alapján létrehozzuk
+          a `UsernamePasswordAuthenticationToken`-t
+            - Ügyelj rá, hogy a jelszó értéke `null` legyen (fölöslegesen nem utaztatjuk az érzékeny adatot)!
+        - Ezután tudatni kell a Springgel, hogy egyedi módon ellenőriztük a bejelentkezést, ami sikeres volt. Ehhez
+          az `Authentication` objektumot be kell állítani a `SecurityContextHolder`-ben
+    - Mindez ha hibára futott volna, akkor dobunk egy `BadCredentialsException`-t
+    - Végül gondoskodunk a szűrőlánc beépíthetőségéről.
+
+```java
+    @Override
+protected void doFilterInternal(HttpServletRequest request,
+        HttpServletResponse response,
+        FilterChain filterChain)throws ServletException,IOException{
+        String jwt=request.getHeader(SecurityConstants.JWT_HEADER);
+        if(jwt!=null){
+        try{
+        SecretKey key=Keys.hmacShaKeyFor(SecurityConstants.JWT_KEY.getBytes(StandardCharsets.UTF_8));
+        Claims claims=Jwts.parserBuilder()
+        .setSigningKey(key)
+        .build()
+        .parseClaimsJws(jwt)
+        .getBody();
+        String username=String.valueOf(claims.get("username"));
+        String authorities=String.valueOf(claims.get("authorities"));
+        Authentication auth=new UsernamePasswordAuthenticationToken(username,
+        null,
+        AuthorityUtils.commaSeparatedStringToAuthorityList(authorities));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        }catch(Exception e){
+        throw new BadCredentialsException("Invalid Token Received!");
+        }
+        }
+        filterChain.doFilter(request,response);
+        }
+
+   ```
+
+10. Ezt a szűrőt minden egyes kérésnél szeretnénk futtatni, egy kivételével: bejelntkezéskor ugyanis szükségtelen az
+    érvényesítés, hiszen a bejelentkezés során a felhasználó kap egy új, érvényes tokent.
+
+```java
+    @Override
+protected boolean shouldNotFilter(HttpServletRequest request)throws ServletException{
+        return request.getServletPath().equals("/user");
+        }
+   ```
+
+11. A szűrő használatához be kell azt építeni a szűrőláncba. Ezt a szűrőt bejelentkezés előtt szeretnénk használni, ezért a következő sort kell hozzáadni a lánchoz: `.addFilterBefore(new JWTTokenValidatorFilter(), BasicAuthenticationFilter.class)`
+12. Ahhoz, hogy használhassuk a tokent, a frontendünknek is meg kell értenie, hogy miről van szó.
+    - `login.component.ts`: Olvasd ki a fejlécből az autorizációt, és állítsd be a `sessionStorage`-be. Ehhez add hozzá ezt a sort: `window.sessionStorage.setItem("Authorization",responseData.headers.get('Authorization')!);`
+    - Az interceptorban már beállítottunk egy "Basic" bejelentkezés során használt headert, most `else` ágon állítsunk be egy headert arra az esetre, ha a felhasználó `sessionStorage`-ében megtalálható az "Authorization" kulcs
+    ```java
+    if(this.user && this.user.password && this.user.email){
+      httpHeaders = httpHeaders.append('Authorization', 'Basic ' + window.btoa(this.user.email + ':' + this.user.password));
+    } else {
+      let authorization = sessionStorage.getItem('Authorization');
+      if (authorization){
+        httpHeaders = httpHeaders.append('Authorization', authorization);
+      }
+    }
+
+    ```
+
+
+Ellenőrizheted a változtatásiankat azáltal, hogy megpróbálsz bejelentkeznia egy bőngészőből, ami nem tárol az alkalmazáshoz tartozó sütiket.
+Nyisd meg az Application fület és bejelentkezés után csupán egy XSRF-TOKEN lesz látható, mivel a JSESSIONID létrehozását megszüntettük.
+A JWT tokent a kérés fejlécében tároljuk el, amit a "Network" fülön ellenőrizhetsz. Kattints az xhr típusú user kérésre,
+hogy megjelenítsd a hozzá tartozó részleteket és máris láthatod az "Authorization" kulcshoz tartozó értéket, ami maga a JWT token.
+Másold ki a token értékét, és illeszd be a www.jwt.io oldal "Encoded" mezőjébe. Eredméynül jobboldalt láthatod a dekódolt tokent, amiből kiolvashatóak a belekódolt információk.
+**Ezért is volt nagyon fontos, hogy a jelszót `null`-ra állítsuk a tokenben**
+
+
+Bejelentkezés után maradj a "Network" fülön, és kattints az egyik opcióra, majd ellenőrizd az xhr típusú kéréshez tartozó fejlécet.
+Itt is meg fogod találni a JWT tokent.
+
+
+Most pedig menj az "Application" fülre, és keresd meg a "Session Storage"-et! Módosíts akár csak egy karaktert is az "Authorization" kulcshoz tartozó értéken, majd próbálj elérni egy opciót.
+Az eredmény: 401
+
+
+Amiket elértünk ezzel a lépéssel:
+    - a felhasználó kényelmesen böngészheti az oldalunkat, anélkül hogy többször be kéne jelentkeznie
+    - megvédjük a felhasználót a CSRF támadások ellen
+    - nem sütiben tároljuk a bejelntkezési adatokat
+    - a felhasználó jelszavát egyetlen egyszer utaztatjuk (bejelntkezés)
+    - tovább fokozzuk a biztonságot azzal, hogy nem tároljuk a tokent, hanem az aláírás segítségével győződünk meg a hitelességéről
+    - növeltük az oldal sebességét azáltal, hogy autentikációról és autorizációról a biztonsági szűrőlánc gondoskodik. 
