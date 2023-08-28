@@ -965,3 +965,76 @@ Amiket elértünk ezzel a lépéssel:
     - tovább fokozzuk a biztonságot azzal, hogy nem tároljuk a tokent, hanem az aláírás segítségével győződünk meg a hitelességéről
     - növeltük az oldal sebességét azáltal, hogy autentikációról és autorizációról a biztonsági szűrőlánc gondoskodik.
     - ha a token korrumpálódott, a felhasználónak nem kell jelszót változtatni, csupán újra bejelentkeznie.
+
+
+### 10.lépés - Metódus szintű biztonság
+A projekt jelenlegi állapotában megvalósítottunk eg lehetséges biztonsági rendszert, ami kiszolgálja a beazonosítást, és gondoskodik az egyes végpontok
+valamint az onnan indított kérések hozzáférhetőségéről. Tovább fokozhatjuk a biztonságot azáltal, hogy levédjük a metódusainket is. Amikor levédünk egy
+metódust, akkor olyan védelmet alakítunk ki, ami nem csupán REST kérréseken alapul.
+Kétféle eszközt használhatunk:
+- a felhasználó jogosultságai alapján validáljuk, hogy lehet-e hozzáférése a metódushoz, vagy sem. 
+- validáljuk, hogy a metódus milyen adatot kaphat a paraméterein keresztül, és mit kaphat vissza eredményül a hívó.
+
+
+Kövesd az alábbi leírást, hogy megértsd milyen módokon lehet használni:
+1. Alapértelmezetten ezek a lehetőségek ki vannak kapcsolva, de az alkalmazásunkra használt `@EnableMethodSecurity` annotációval engedélyezni lehet a használatukat.
+2. Engedélyezést követően konfigurálni kell. Ha hozzá szeretnénk férni a teljes eszköztárhoz, akkor az alábbi beállítást kell elvégeznünk:
+    - `@EnableMethodSecurity(prePostEnabled =true, securedEnabled = true, jsr250Enabled=true)`
+3. A szűrőláncban állítsd át a `/loans` ponthoz tartozó requestMatchers-t `hasRole()` helyett `authenticated()`-re (így jogosultságtól függetlenül bármely bejelentkezett felhasználó hozzáférhet)
+4. A `LoanRepository` megírt metódusa felé tedd ki a `@PreAuthorize("hasRole('ROOT')")` annotációt
+    - Bonyolultabb logika esetén: `PermissionEvaulator hasPermission()`
+     - Nem létezik ROOT jogosultság az adatbázisunkban, így ez a metódus elérhetetlenné válik
+    - Jelentkezz be a alkalmazásba, majd próbáld elérni a "Loans" menüpontot
+    - Ha megnyitod a konzolt, láthatod, hogy a kérést 403-as kóddal elutasították.
+    - Ha a ROOT-ot átírod USER-re, akkor már újra elérhető lesz minden bejelentkezett és "USER" jogosultsággal rendelkező felhasználó számára
+    - Töröld ki az annotáción paraméterét, majd nyiss újra idézőjelt a zárójelen belül. A zárójelek között ha nyomsz egy `Ctrl+Space`-t
+        azzal előhívod a javaslatokatt. Kezdd el írni, hogy "has" és láthatod, hogy milyen feltételekre lehet szűrni. 
+5. Törölheted a repository metódusa feletti annotációt, mert egy másik módszert is megnézünk. Csupán annyit kell tenni,
+    hogy a `LoansController getLoanDetails()` metódusát annotáljuk ezzel: `@PostAuthorize("hasRole('ROOT')")`.
+    - Tegyél egy breakpointot a metódusra, és indítsd el debug módban a programot.
+    - Jelentkezz be az alkalmazásba és próbáld elérni a "Loans" menüpontot.
+    - A futás szünetel a breakpointon, ha tovább lépteted, akkor láthatod, hogy gond nélkül lefut,
+      de a böngésző konzolát megnyitva azt is láthatod, hogy 403-as kóddal újra elutasították a kérést és nem kapod meg az adatot.
+    - Tehát: a keretrendszer hagyta, hogy lefusson a metódus, de az eredmény helyett 403-ast dobott.
+
+6. Vegyünk egy olan példát, hogy nem szeretnénk elfogadni olyan adatot a "Contact" űrlapon, ahol a név mező értéke "Test"
+    - A `ContactController saveContactInqueryDetails()` metódusa felett használd ezt az annotációt: `@PreFilter("filterObject.contactName != 'Test'")`
+    - Fontos tudni, hogy a `@PreFilter` és a `@PostFilter` is "collection"-t kezel, ezért használatához meg kell változtatni a metódus logikáját
+        
+    ```java
+   @PretFilter("filterObject.contactName != 'Test'")
+   public List<Contact> saveContactInquiryDetails(@RequestBody List<Contact> contacts) {
+        Contact contact = contacts.get(0);
+        contact.setContactId(getServiceReqNumber());
+        contact.setCreateDt(new Date(System.currentTimeMillis()));
+        contact = contactRepository.save(contact);
+        List<Contact> returnContacts = new ArrayList<>();
+        returnContacts.add(contact);
+        return returnContacts;
+   }
+      ```
+   
+   És ne feledkezzünk meg róla, hogy frontenről is listát kell küldeni, ezért a `dashboard.service.ts` fájlban módosítsuk az alábbira a vonatkozó metódust:
+    ```typescript
+     saveMessage(contact : Contact){
+        const contacts = [];
+        contacts.push(contact)
+        return this.http.post(environment.rooturl + AppConstants.CONTACT_API_URL,contacts,{ observe: 'response'});
+    }
+    ```
+   
+    Majd a `contact.component.ts` fájlba vegyünk fel egy új fieldet `contacts = new Array()` és módosítsuk a vonatkozó metódust az alábbire:
+    ```typescript
+     saveMessage(contactForm: NgForm) {
+    this.dashboardService.saveMessage(this.model).subscribe(
+      responseData => {
+        this.contacts = <any> responseData.body;
+        this.contacts.forEach(function (this: ContactComponent, contact: Contact) {
+          this.model = contact;
+        }.bind(this));
+        contactForm.resetForm();
+      });
+    }
+   ```
+
+Ha most megpróbáljuk "Test" névvel küldeni az űrlapot, akkor 401-es hibát fogunk kapni, és az adat nem kerül be az adatbázisba.
