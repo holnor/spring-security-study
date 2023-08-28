@@ -1038,3 +1038,10 @@ Kövesd az alábbi leírást, hogy megértsd milyen módokon lehet használni:
    ```
 
 Ha most megpróbáljuk "Test" névvel küldeni az űrlapot, akkor 401-es hibát fogunk kapni, és az adat nem kerül be az adatbázisba.
+
+
+### 11.lépés - OAuth2 és OpenID
+Képzeljük el, hogy van egy harmadik féltől származó alkalmazás, ami a facebook oldalunkról gyűjten hasznos információkat számunkra.
+Shhoz hogy ezt megtehesse be kell jelentkezzen a mi nevünkben. Korábban ez csak úgy lett volna megoldható, ha átadtuk volna a bejelentkezési 
+adatainkat, de ezzel az app felhatalmazást kapott volna arra, hogy bármit megtehessen, a nevünkben amit mi is megtehetnénk.
+Ezt a problémát ki lehet küszöbölni.
